@@ -1,51 +1,70 @@
 from docutils import core
-from docutils import writers
 from docutils.utils import SystemMessage
-import os
+from glob import glob
+from os.path import join
+from os import sep
 
-from templates import get_template
+from templates import TemplateFinder
 
-def html_parts(name, **kwargs):
-    f = file(name)
-    overrides = {
-            'doctitle_xform' : True,
-            'initial_header_level' : 1,
-            'halt_level' : 2,
-            'cloak_email_addresses' : True,
-            'stylesheet' : '',
-            '_stylesheet_required' : False,
-            'embed_stylesheet' : False,
+class lazy_property(object):
+    def __init__(self, calculate_function):
+        self._calculate = calculate_function
+
+    def __get__(self, obj, _=None):
+        if obj is None:
+            return self
+        value = self._calculate(obj)
+        setattr(obj, self._calculate.func_name, value)
+        return value
+    
+
+class WobsiteBuilder(object):
+    def __init__(self, **options):
+        self.site_dir = options['site_dir']
+        self.template_finder = TemplateFinder(options['template_dir'])
+        self.title = options['title']
+
+    @lazy_property
+    def parts(self):
+        result = {}
+        overrides = {
+                'doctitle_xform' : True,
+                'initial_header_level' : 1,
+                'halt_level' : 2,
+                'cloak_email_addresses' : True,
+                'stylesheet' : '',
+                '_stylesheet_required' : False,
+                'embed_stylesheet' : False,
             }
-    overrides.update(kwargs)
-    try:
-        return core.publish_parts(f.read(), source_path=name,
-                                  writer_name='html', settings_overrides=overrides)
-    except SystemMessage, msg:
-        print msg
-        import sys
-        sys.exit(1)
+    
+        for f in glob(join(self.site_dir, '*.txt')):
+            print f
+            name = f[f.find(sep)+1:f.rfind('.')].lstrip('0123456789')
+            result[name] = core.publish_parts(file(f).read(), source_path=f,
+                                              writer_name='html',
+                                              settings_overrides=overrides)
+        return result
 
 
-def build_rst(target, source, env):
-    parts = [html_parts(str(input)) for input in source]
+    def build_directory(self, output_dir):
+        EXT = '.html'
 
-    #TODO
-    output_dir = os.path.dirname(str(target[0]))
+        menu = zip((i['title'] for i in self.parts.itervalues()),
+                   (i + EXT for i in self.parts))
 
-    menu = zip((i['title'] for i in parts),
-               (str(i)[len(output_dir)+len(os.sep):] for i in target))
+        title = self.title
 
-    title = ''# site_title
+        for name, parts in self.parts.iteritems():
+            template = self.template_finder(name)
 
-    for target, parts in zip(target, parts):
-        template = get_template(str(target).split(os.sep)[1:])
+            template.title = self.title
+            template.menu = menu
+            template.subtitle = parts['title']
+            template.keywords = ''
+            template.description = ''
+            template.index_content = parts['body']
 
-        template.title = title
-        template.menu = menu
-        template.subtitle = parts['title']
-        template.keywords = ''
-        template.description = ''
-        template.index_content = parts['body']
+            print join(output_dir, name + EXT)
 
-        print >> file(str(target), 'w'), template
+            print >> file(join(output_dir, name + EXT), 'w'), template
 
