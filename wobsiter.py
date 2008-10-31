@@ -6,18 +6,16 @@
 # TODO Manage downloadable files and make their links usable in the ReST
 # TODO Syntax highlighting using pygments
 
-from wobsiter import WobsiteBuilder
+from __future__ import with_statement
+from wobsiter import Source, Output, Path, glob, TemplateFinder
 from sys import argv
 
 #from optparse import ConfigParser
 
-options = {
-        "template_dir": "templates",
-        "site_dir": "site",
-        "title": "Benedikts Seite",
-        }
+template_dir = Path("templates")
+site_dir = Path("site")
 
-bld = WobsiteBuilder(**options)
-
-bld.build_directory(argv[1])
+with Output("file://output") as output:
+    for i in glob(site_dir / '*.txt'):
+        Source(i, template=TemplateFinder(template_dir)(i))(output)
 
