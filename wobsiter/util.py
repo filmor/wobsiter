@@ -25,22 +25,34 @@ class InternedMeta(type):
 
         if not hasattr(cls, '_InternedMeta__is_interned'):
             cls.__is_interned = True
+            cls.__is_reused = False
             cls.__instances = {}
 
             old_new = cls.__new__
+            old_init = cls.__init__
+
+            def my_init(self, *args, **kwargs):
+                if not self.__is_reused:
+                    old_init(self, *args, **kwargs)
 
             def my_new(my_cls, *args, **kwargs):
                 if my_cls is cls:
-                    if args in cls.__instances:
-                        instance = cls.__instances[args]
+                    identifier = cls.__id_args__(*args, **kwargs)
+                    if identifier in cls.__instances:
+                        instance = cls.__instances[identifier]
+                        instance.__is_reused = True
                     else:
                         instance = old_new(my_cls, *args, **kwargs)
-                        cls.__instances[args] = instance
+                        cls.__instances[identifier] = instance
                 else:
                     instance = old_new(my_cls, *args, **kwargs)
                 return instance
             
             setattr(cls, '__new__', staticmethod(my_new))
+            setattr(cls, '__init__', my_init)
+
+        def __id_args__(cls, *args, **kwargs):
+            return (args, kwargs)
 
 # TODO
 # def collect_garbage(self):
@@ -48,6 +60,13 @@ class InternedMeta(type):
 
 class Path(object):
     __metaclass__ = InternedMeta
+
+    @staticmethod
+    def __id_args__(path):
+        if type(path) == Path:
+            path = path._path
+        return os.path.normpath(path)
+
     def __init__(self, path):
         if type(path) == Path:
             self._path = path._path

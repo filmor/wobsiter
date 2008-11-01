@@ -3,6 +3,11 @@ from ..util import InternedMeta, Path, lazy_property
 
 class Source(object):
     __metaclass__ = InternedMeta
+
+    @staticmethod
+    def __id_args__(path, dir='', handler=None, *args, **kwargs):
+        return (path, Path(dir))
+
     def __init__(self, path, dir='', handler=None, *args, **kwargs):
         self._dir = Path(dir)
         self._path = path
@@ -16,6 +21,8 @@ class Source(object):
             if hasattr(self.handler, 'deps'):
                 for source in self.handler.deps:
                     source(output)
+            print 'Building %s using %s' \
+                    % (self._path, self.handler.__class__.__name__)
             output.set_directory(self._dir)
             self.result = self.handler.build(output)
             self._is_built = True
