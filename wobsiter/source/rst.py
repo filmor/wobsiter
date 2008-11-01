@@ -16,15 +16,12 @@ def make_parts(path, **p_overrides):
                     '_stylesheet_required' : False,
                     'embed_stylesheet' : False,
                 }.update(p_overrides)
-
-    print 'Processing ', path
     return publish_parts(file(path).read(), source_path=path,
                          writer_name='html', settings_overrides=overrides)
 
 class RstHandler(object):
     EXT = 'txt'
     def __init__(self, path, menu=None, template=None):
-        print 'Rst ', path
         self._path = path
         self._menu = menu or Source(path.dir / MENUFILE, handler=MenuHandler)
         self._template = template or TemplateFinder(path)
