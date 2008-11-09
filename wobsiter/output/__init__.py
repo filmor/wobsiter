@@ -25,21 +25,29 @@ class Output(object):
         if type is None:
             self.commit()
 
-    def _enqueue_action(self, name, *opts):
+    def _enqueue_action(self, name, *args, **kwargs):
         """Append an action to the action queue."""
-        self._queue.append(partial(getattr(self.handler, name), *opts))
+        self._queue.append(partial(getattr(self.handler, name), *args, **kwargs))
+
+    def get_directory(self):
+        """Return the current working directory."""
+        return self._dir
 
     def set_directory(self, path):
         """Set current working directory in the output structure."""
         self._enqueue_action('create_directory', path)
         self._created_items.add(path)
         self._dir = Path(path)
+        return self._dir
+
+    directory = property(get_directory, set_directory)
 
     def write_file(self, name, data):
         """Make a file from data in the current working directory."""
         path = self._dir / name
         self._created_items.add(path)
         self._enqueue_action('write_file', path, data)
+        return path
 
     # TODO Keine Pfade erlauben, nur Dateinamen angeben, auch Verzeichnisse
     #      kopieren.
@@ -48,6 +56,7 @@ class Output(object):
         path = self._dir / (to_path or Path(from_path).base)
         self._created_items.add(path)
         self._enqueue_action('copy_file', from_path, path)
+        return path
 
     def commit(self):
         """Commit the changes in the queue."""

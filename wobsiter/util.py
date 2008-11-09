@@ -65,6 +65,7 @@ class Path(object):
     def __id_args__(path):
         if type(path) == Path:
             path = path._path
+        path = os.path.expanduser(path)
         return os.path.normpath(path)
 
     def __init__(self, path):
@@ -73,7 +74,7 @@ class Path(object):
         else:
             assert type(path) == str or type(path) == unicode
             #TODO __pre_init__
-            self._path = os.path.normpath(path)
+            self._path = os.path.normpath(os.path.expanduser(path))
 
     dir = property(lambda self: Path(self.dirname))
     dirname = property(lambda self: os.path.dirname(self._path))
