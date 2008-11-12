@@ -1,4 +1,6 @@
-import os, shutil
+from os import remove, extsep, sep, mkdir
+from shutil import rmtree, copyfile as copy
+from os.path import *
 
 class lazy_property(object):
     def __init__(self, calculate_function):
@@ -17,8 +19,21 @@ class rw_lazy_property(lazy_property):
     def __set__(self, obj, val):
         self._set(obj, val)
 
+def normalize(path):
+    return normcase(normpath(expanduser(path)))
 
-# TODO Allow a __pre_init__ method to canonise the constructor arguments
+def ext(path):
+    _, res = splitext(path)
+    return res.lstrip(extsep)
+
+def without_ext(path):
+    res, _ = splitext(path)
+    return res
+
+def change_ext(path, ext):
+    return without_ext(path) + extsep + ext
+
+
 class InternedMeta(type):
     def __init__(cls, name, bases, dct):
         super(InternedMeta, cls).__init__(name, bases, dct)
@@ -56,66 +71,4 @@ class InternedMeta(type):
 
 # TODO
 # def collect_garbage(self):
-
-
-class Path(object):
-    __metaclass__ = InternedMeta
-
-    @staticmethod
-    def __id_args__(path):
-        if type(path) == Path:
-            path = path._path
-        path = os.path.expanduser(path)
-        return os.path.normpath(path)
-
-    def __init__(self, path):
-        if type(path) == Path:
-            self._path = path._path
-        else:
-            assert type(path) == str or type(path) == unicode
-            #TODO __pre_init__
-            self._path = os.path.normpath(os.path.expanduser(path))
-
-    dir = property(lambda self: Path(self.dirname))
-    dirname = property(lambda self: os.path.dirname(self._path))
-    base = property(lambda self: Path(self.basename))
-    basename = property(lambda self: os.path.basename(self._path))
-
-    exists = property(lambda self: os.path.exists(self._path))
-    isdir = property(lambda self: os.path.isdir(self._path))
-    isfile = property(lambda self: os.path.isfile(self._path))
-    ext = property(lambda self: os.path.splitext(self._path)[1][1:])
-    without_ext = property(lambda self: os.path.splitext(self._path)[0])
-
-    def __div__(self, other):
-        if type(other) is Path:
-            other = other._path
-        return Path(os.path.join(self._path, other))
-
-    __eq__ = lambda self, other: os.path.samefile(self, other)
-    __str__ = lambda self: os.path.join(self._path)
-    __repr__ = lambda self: "<%s: %s>" % (self.__class__.__name__, self._path)
-
-def _mkfunc(sys_func, ret=None):
-    def res(*args):
-        new_args = (str(i) if type(i) == Path else i for i in args)
-        return sys_func(*new_args)
-    try:
-        res.func_name = sys_func.func_name
-        res.func_doc = sys_func.func_doc
-    except AttributeError:
-        pass
-    return res
-
-remove = _mkfunc(os.remove)
-mkdir = _mkfunc(os.mkdir)
-makedirs = _mkfunc(os.makedirs)
-rmdir = _mkfunc(os.rmdir)
-copy = _mkfunc(shutil.copyfile)
-file = _mkfunc(file)
-open = _mkfunc(open)
-
-def glob(path):
-    from glob import glob as std_glob
-    return [ Path(i) for i in std_glob(str(path)) ]
 

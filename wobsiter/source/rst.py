@@ -1,5 +1,5 @@
 from __future__ import with_statement
-from ..util import Path
+from .. import util
 from . import Source
 from .file import FileHandler
 from .menu import MenuHandler
@@ -34,13 +34,11 @@ def _parse_ref(string):
 def file_role(role, rawtext, text, lineno, inliner, options={}, content={}):
     source = inliner.document.settings._source
     path = text
-    name = basename(text)
-
+    name = util.basename(text)
 #    name, link = _parse_ref(text)
-
 #    file_dir = inliner.document.settings.file_directory
     file_dir = "files"
-    source.deps += (Source(Path(path), dir=file_dir, handler=FileHandler),)
+    source.deps += (Source(path, dir=file_dir, handler=FileHandler),)
     ref = file_dir + '/' + name #urljoin(file_dir, name)
     node = nodes.reference(rawtext, name, refuri=ref, **options)
     return [node], []
@@ -51,14 +49,18 @@ roles.register_canonical_role('script', file_role)
 
 class RstHandler(object):
     EXT = 'txt'
-    def __init__(self, path, menu=None, template=None):
+    def __init__(self, path, template, menu=None):
         self._path = path
-        self._menu = menu or Source(path.dir / MENUFILE, handler=MenuHandler)
-        self._template = template or TemplateFinder(path)
+        self._menu = menu or Source(util.join(util.dirname(path), MENUFILE),
+                                    handler=MenuHandler)
+        self._template = template
         self.deps = (self._menu, self._template)
-        self.filename = str(path.base.without_ext) + '.html'
-        self._parts = publish_parts(file(str(path)).read(), source_path=self,
-                                    writer_name='html', settings_overrides=_overrides)
+        self.filename = util.change_ext(util.basename(path), 'html')
+        # BAAAD Hack!! (self really should be in a settings arg of some
+        # kind, definately not source_path
+        self._parts = publish_parts(file(path).read(), source_path=self,
+                                    writer_name='html',
+                                    settings_overrides=_overrides)
 
     def build(self, output):
         template = self._template.result
@@ -72,4 +74,3 @@ class RstHandler(object):
         template.index_content = parts['body']
 
         output.write_file(self.filename, str(template))
-

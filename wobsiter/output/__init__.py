@@ -1,6 +1,6 @@
 from urlparse import urlparse
 from functools import partial
-from ..util import Path
+from .. import util
 
 from file_handler import *
 
@@ -8,11 +8,12 @@ class Output(object):
     """Output class.
 
     Collects the output actions called in a SourceHandler's build method and
-    commits them if all went well."""
+    commits them if all went well.
+    It is /not/ atomic in commit!"""
 
     _queue = list()
     _created_items = set()
-    _dir = Path('')
+    _dir = ''
 
     def __init__(self, url, *opts):
         type = urlparse(url)[0]
@@ -37,14 +38,14 @@ class Output(object):
         """Set current working directory in the output structure."""
         self._enqueue_action('create_directory', path)
         self._created_items.add(path)
-        self._dir = Path(path)
+        self._dir = path
         return self._dir
 
     directory = property(get_directory, set_directory)
 
     def write_file(self, name, data):
         """Make a file from data in the current working directory."""
-        path = self._dir / name
+        path = util.join(self._dir, name)
         self._created_items.add(path)
         self._enqueue_action('write_file', path, data)
         return path
@@ -53,7 +54,7 @@ class Output(object):
     #      kopieren.
     def copy_file(self, from_path, to_path=None):
         """Copy a file to to_path in the working directory."""
-        path = self._dir / (to_path or Path(from_path).base)
+        path = util.join(self._dir, to_path or util.basename(from_path))
         self._created_items.add(path)
         self._enqueue_action('copy_file', from_path, path)
         return path

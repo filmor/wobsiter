@@ -1,20 +1,21 @@
 from contextlib import contextmanager
-from ..util import InternedMeta, Path, lazy_property
+from .. import util
 
 class Source(object):
-    __metaclass__ = InternedMeta
+    __metaclass__ = util.InternedMeta
+    
+    _is_built = False
 
     @staticmethod
     def __id_args__(path, dir='', handler=None, *args, **kwargs):
-        return (path, Path(dir))
+        return (util.normalize(path), util.normalize(dir))
 
     def __init__(self, path, dir='', handler=None, *args, **kwargs):
-        self._dir = Path(dir)
-        self._path = path
-        self._is_built = False
+        self._dir = util.normalize(dir)
+        self._path = util.normalize(path)
         if not handler:
-            handler = _handlers[path.ext]
-        self.handler = handler(path, *args, **kwargs)
+            handler = _handlers[util.ext(self._path)]
+        self.handler = handler(self._path, *args, **kwargs)
 
     def __call__(self, output):
         if not self._is_built:
